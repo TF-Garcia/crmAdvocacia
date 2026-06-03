@@ -124,6 +124,15 @@ const normalizeStatus = (status: LegacyClientStatus): ClientStatus => {
   return status;
 };
 
+const toLegacyStatus = (status: ClientStatus): "Ativo" | "Aguardando" | "Concluido" => {
+  if (status === "Conhecimento") return "Ativo";
+  if (status === "Prazo a cumprir") return "Aguardando";
+  return "Concluido";
+};
+
+const isLegacyStatusError = (error: unknown) =>
+  error instanceof Error && error.message.includes("expected one of") && error.message.includes("Ativo");
+
 const normalizeMoney = (value: number | string | null | undefined) => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -145,6 +154,11 @@ const normalizeClientList = (response: RawClientListResponse): ClientListRespons
   data: response.data.map(normalizeClientRecord),
 });
 
+const withLegacyStatus = (payload: ClientPayload): ClientPayload & { status: "Ativo" | "Aguardando" | "Concluido" } => ({
+  ...payload,
+  status: toLegacyStatus(payload.status),
+});
+
 export const clientsApi = {
   async list(filters: ClientFilters = {}) {
     const params = new URLSearchParams();
@@ -156,23 +170,52 @@ export const clientsApi = {
     if (filters.limit) params.set("limit", String(filters.limit));
 
     const query = params.toString();
-    const response = await request<RawClientListResponse>(`/api/clientes${query ? `?${query}` : ""}`);
-    return normalizeClientList(response);
+    try {
+      const response = await request<RawClientListResponse>(`/api/clientes${query ? `?${query}` : ""}`);
+      return normalizeClientList(response);
+    } catch (error) {
+      if (!filters.status || filters.status === "Todos" || !isLegacyStatusError(error)) throw error;
+
+      params.set("status", toLegacyStatus(filters.status));
+      const legacyQuery = params.toString();
+      const response = await request<RawClientListResponse>(`/api/clientes${legacyQuery ? `?${legacyQuery}` : ""}`);
+      return normalizeClientList(response);
+    }
   },
 
   async create(payload: ClientPayload) {
-    const response = await request<RawClientRecord>("/api/clientes", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    let response: RawClientRecord;
+    try {
+      response = await request<RawClientRecord>("/api/clientes", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      if (!isLegacyStatusError(error)) throw error;
+
+      response = await request<RawClientRecord>("/api/clientes", {
+        method: "POST",
+        body: JSON.stringify(withLegacyStatus(payload)),
+      });
+    }
     return normalizeClientRecord(response);
   },
 
   async update(id: number, payload: ClientPayload) {
-    const response = await request<RawClientRecord>(`/api/clientes/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+    let response: RawClientRecord;
+    try {
+      response = await request<RawClientRecord>(`/api/clientes/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      if (!isLegacyStatusError(error)) throw error;
+
+      response = await request<RawClientRecord>(`/api/clientes/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(withLegacyStatus(payload)),
+      });
+    }
     return normalizeClientRecord(response);
   },
 
