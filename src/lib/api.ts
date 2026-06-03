@@ -1,4 +1,5 @@
 export type ClientStatus = "Conhecimento" | "Prazo a cumprir" | "Execucao";
+type LegacyClientStatus = ClientStatus | "Ativo" | "Aguardando" | "Concluido";
 export type ServiceType = "Consultoria" | "Processo" | "Contrato" | "Audiencia" | "Planejamento";
 
 export type ClientRecord = {
@@ -39,6 +40,18 @@ export type ClientPayload = {
   observacoes: string | null;
 };
 
+type RawClientRecord = Omit<
+  ClientRecord,
+  "numeroProcesso" | "status" | "arrecadacaoHonorarios" | "dataAudiencia" | "tarefasPendentes" | "observacoes"
+> & {
+  numeroProcesso?: string | null;
+  status: LegacyClientStatus;
+  arrecadacaoHonorarios?: number | string | null;
+  dataAudiencia?: string | null;
+  tarefasPendentes?: string | null;
+  observacoes?: string | null;
+};
+
 export type ClientListResponse = {
   data: ClientRecord[];
   pagination: {
@@ -47,6 +60,10 @@ export type ClientListResponse = {
     total: number;
     totalPages: number;
   };
+};
+
+type RawClientListResponse = Omit<ClientListResponse, "data"> & {
+  data: RawClientRecord[];
 };
 
 type ClientFilters = {
@@ -79,7 +96,15 @@ const request = async <ResponseBody>(path: string, init?: RequestInit): Promise<
 
     try {
       const body = await response.json();
-      message = body.error ?? message;
+      const details = Array.isArray(body.details)
+        ? body.details
+            .map((detail: { path?: Array<string | number>; message?: string }) =>
+              [detail.path?.join("."), detail.message].filter(Boolean).join(": "),
+            )
+            .filter(Boolean)
+            .join("; ")
+        : "";
+      message = [body.error, details].filter(Boolean).join(" - ") || message;
     } catch {
       message = response.statusText || message;
     }
@@ -92,6 +117,34 @@ const request = async <ResponseBody>(path: string, init?: RequestInit): Promise<
   return response.json() as Promise<ResponseBody>;
 };
 
+const normalizeStatus = (status: LegacyClientStatus): ClientStatus => {
+  if (status === "Ativo") return "Conhecimento";
+  if (status === "Aguardando") return "Prazo a cumprir";
+  if (status === "Concluido") return "Execucao";
+  return status;
+};
+
+const normalizeMoney = (value: number | string | null | undefined) => {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeClientRecord = (record: RawClientRecord): ClientRecord => ({
+  ...record,
+  numeroProcesso: record.numeroProcesso ?? "",
+  status: normalizeStatus(record.status),
+  honorarios: normalizeMoney(record.honorarios),
+  arrecadacaoHonorarios: normalizeMoney(record.arrecadacaoHonorarios),
+  dataAudiencia: record.dataAudiencia ?? null,
+  tarefasPendentes: record.tarefasPendentes ?? null,
+  observacoes: record.observacoes ?? null,
+});
+
+const normalizeClientList = (response: RawClientListResponse): ClientListResponse => ({
+  ...response,
+  data: response.data.map(normalizeClientRecord),
+});
+
 export const clientsApi = {
   async list(filters: ClientFilters = {}) {
     const params = new URLSearchParams();
@@ -103,21 +156,24 @@ export const clientsApi = {
     if (filters.limit) params.set("limit", String(filters.limit));
 
     const query = params.toString();
-    return request<ClientListResponse>(`/api/clientes${query ? `?${query}` : ""}`);
+    const response = await request<RawClientListResponse>(`/api/clientes${query ? `?${query}` : ""}`);
+    return normalizeClientList(response);
   },
 
-  create(payload: ClientPayload) {
-    return request<ClientRecord>("/api/clientes", {
+  async create(payload: ClientPayload) {
+    const response = await request<RawClientRecord>("/api/clientes", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    return normalizeClientRecord(response);
   },
 
-  update(id: number, payload: ClientPayload) {
-    return request<ClientRecord>(`/api/clientes/${id}`, {
+  async update(id: number, payload: ClientPayload) {
+    const response = await request<RawClientRecord>(`/api/clientes/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
+    return normalizeClientRecord(response);
   },
 
   remove(id: number) {

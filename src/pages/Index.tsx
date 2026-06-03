@@ -126,22 +126,24 @@ const formatPhone = (value: string) => {
   return digits.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d{1,4})$/, "$1-$2");
 };
 
+const safeText = (value: string | null | undefined) => value ?? "";
+
 const toPayload = (form: ClientForm): ClientPayload => ({
-  nome: form.nome.trim(),
-  cpf: formatCpfCnpj(form.cpf),
-  telefone: formatPhone(form.telefone),
-  email: form.email.trim(),
-  numeroProcesso: form.numeroProcesso.trim(),
+  nome: safeText(form.nome).trim(),
+  cpf: formatCpfCnpj(safeText(form.cpf)),
+  telefone: formatPhone(safeText(form.telefone)),
+  email: safeText(form.email).trim(),
+  numeroProcesso: safeText(form.numeroProcesso).trim(),
   tipo: form.tipo,
   status: form.status,
   honorarios: Number(form.honorarios),
   arrecadacaoHonorarios: Number(form.arrecadacaoHonorarios),
   dataAbertura: form.dataAbertura,
   dataAudiencia: form.dataAudiencia || null,
-  responsavelNome: form.responsavelNome.trim(),
-  proximoPasso: form.proximoPasso.trim(),
-  tarefasPendentes: form.tarefasPendentes.trim() || null,
-  observacoes: form.observacoes.trim() || null,
+  responsavelNome: safeText(form.responsavelNome).trim(),
+  proximoPasso: safeText(form.proximoPasso).trim(),
+  tarefasPendentes: safeText(form.tarefasPendentes).trim() || null,
+  observacoes: safeText(form.observacoes).trim() || null,
 });
 
 const serviceOptions: ServiceType[] = ["Consultoria", "Processo", "Contrato", "Audiencia", "Planejamento"];
@@ -256,17 +258,17 @@ const Index = () => {
       cpf: client.cpf,
       telefone: client.telefone,
       email: client.email,
-      numeroProcesso: client.numeroProcesso,
+      numeroProcesso: safeText(client.numeroProcesso),
       tipo: client.tipo,
       status: client.status,
-      honorarios: client.honorarios,
-      arrecadacaoHonorarios: client.arrecadacaoHonorarios,
+      honorarios: Number.isFinite(Number(client.honorarios)) ? Number(client.honorarios) : 0,
+      arrecadacaoHonorarios: Number.isFinite(Number(client.arrecadacaoHonorarios)) ? Number(client.arrecadacaoHonorarios) : 0,
       dataAbertura: toDateInput(client.dataAbertura),
       dataAudiencia: toDateInput(client.dataAudiencia),
-      responsavelNome: client.responsavelNome,
-      proximoPasso: client.proximoPasso,
-      tarefasPendentes: client.tarefasPendentes ?? "",
-      observacoes: client.observacoes ?? "",
+      responsavelNome: safeText(client.responsavelNome),
+      proximoPasso: safeText(client.proximoPasso),
+      tarefasPendentes: safeText(client.tarefasPendentes),
+      observacoes: safeText(client.observacoes),
     });
     setIsFormOpen(true);
   };
