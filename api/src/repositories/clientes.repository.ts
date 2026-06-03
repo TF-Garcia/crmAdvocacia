@@ -6,12 +6,16 @@ export type ClientePayload = {
   cpf: string;
   telefone: string;
   email: string;
+  numeroProcesso: string;
   tipo: "Consultoria" | "Processo" | "Contrato" | "Audiencia" | "Planejamento";
-  status: "Ativo" | "Aguardando" | "Concluido";
+  status: "Conhecimento" | "Prazo a cumprir" | "Execucao";
   honorarios: number;
+  arrecadacaoHonorarios: number;
   dataAbertura: string;
+  dataAudiencia?: string | null;
   responsavelNome: string;
   proximoPasso: string;
+  tarefasPendentes?: string | null;
   observacoes?: string | null;
 };
 
@@ -30,12 +34,16 @@ type ClienteRow = {
   cpf: string;
   telefone: string;
   email: string;
+  numero_processo: string | null;
   tipo: ClientePayload["tipo"];
   status: ClientePayload["status"];
   honorarios: string;
+  arrecadacao_honorarios: string;
   data_abertura: string;
+  data_audiencia: string | null;
   responsavel: string | null;
   proximo_passo: string;
+  tarefas_pendentes: string | null;
   observacoes: string | null;
   total?: string;
 };
@@ -47,12 +55,16 @@ const mapRecord = (record: ClienteRow) => ({
   cpf: record.cpf,
   telefone: record.telefone,
   email: record.email,
+  numeroProcesso: record.numero_processo ?? "",
   tipo: record.tipo,
   status: record.status,
   honorarios: Number(record.honorarios),
+  arrecadacaoHonorarios: Number(record.arrecadacao_honorarios),
   dataAbertura: record.data_abertura,
+  dataAudiencia: record.data_audiencia,
   responsavelNome: record.responsavel ?? "",
   proximoPasso: record.proximo_passo,
+  tarefasPendentes: record.tarefas_pendentes,
   observacoes: record.observacoes,
 });
 
@@ -68,7 +80,9 @@ const buildListQuery = (filters: ClienteFilters) => {
       c.cpf ILIKE $${position} OR
       c.telefone ILIKE $${position} OR
       c.email ILIKE $${position} OR
+      s.numero_processo ILIKE $${position} OR
       s.tipo ILIKE $${position} OR
+      s.proximo_passo ILIKE $${position} OR
       r.nome ILIKE $${position}
     )`);
   }
@@ -98,12 +112,16 @@ const buildListQuery = (filters: ClienteFilters) => {
         c.cpf,
         c.telefone,
         c.email,
+        s.numero_processo,
         s.tipo,
         s.status,
         s.honorarios,
+        s.arrecadacao_honorarios,
         s.data_abertura,
+        s.data_audiencia,
         r.nome AS responsavel,
         s.proximo_passo,
+        s.tarefas_pendentes,
         COALESCE(s.observacoes, c.observacoes) AS observacoes,
         COUNT(*) OVER() AS total
       FROM servicos_juridicos s
@@ -151,12 +169,16 @@ export const clientesRepository = {
           c.cpf,
           c.telefone,
           c.email,
+          s.numero_processo,
           s.tipo,
           s.status,
           s.honorarios,
+          s.arrecadacao_honorarios,
           s.data_abertura,
+          s.data_audiencia,
           r.nome AS responsavel,
           s.proximo_passo,
+          s.tarefas_pendentes,
           COALESCE(s.observacoes, c.observacoes) AS observacoes
         FROM servicos_juridicos s
         INNER JOIN clientes c ON c.id = s.cliente_id
@@ -181,6 +203,12 @@ export const clientesRepository = {
         `
           INSERT INTO clientes (nome, cpf, telefone, email, observacoes)
           VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (cpf) DO UPDATE
+          SET nome = EXCLUDED.nome,
+              telefone = EXCLUDED.telefone,
+              email = EXCLUDED.email,
+              observacoes = COALESCE(EXCLUDED.observacoes, clientes.observacoes),
+              atualizado_em = CURRENT_TIMESTAMP
           RETURNING id;
         `,
         [payload.nome, payload.cpf, payload.telefone, payload.email, payload.observacoes ?? null],
@@ -193,24 +221,32 @@ export const clientesRepository = {
           INSERT INTO servicos_juridicos (
             cliente_id,
             responsavel_id,
+            numero_processo,
             tipo,
             status,
             honorarios,
+            arrecadacao_honorarios,
             data_abertura,
+            data_audiencia,
             proximo_passo,
+            tarefas_pendentes,
             observacoes
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           RETURNING id;
         `,
         [
           clienteId,
           responsavelId,
+          payload.numeroProcesso,
           payload.tipo,
           payload.status,
           payload.honorarios,
+          payload.arrecadacaoHonorarios,
           payload.dataAbertura,
+          payload.dataAudiencia ?? null,
           payload.proximoPasso,
+          payload.tarefasPendentes ?? null,
           payload.observacoes ?? null,
         ],
       );
@@ -260,22 +296,30 @@ export const clientesRepository = {
         `
           UPDATE servicos_juridicos
           SET responsavel_id = $1,
-              tipo = $2,
-              status = $3,
-              honorarios = $4,
-              data_abertura = $5,
-              proximo_passo = $6,
-              observacoes = $7,
+              numero_processo = $2,
+              tipo = $3,
+              status = $4,
+              honorarios = $5,
+              arrecadacao_honorarios = $6,
+              data_abertura = $7,
+              data_audiencia = $8,
+              proximo_passo = $9,
+              tarefas_pendentes = $10,
+              observacoes = $11,
               atualizado_em = CURRENT_TIMESTAMP
-          WHERE id = $8;
+          WHERE id = $12;
         `,
         [
           responsavelId,
+          payload.numeroProcesso,
           payload.tipo,
           payload.status,
           payload.honorarios,
+          payload.arrecadacaoHonorarios,
           payload.dataAbertura,
+          payload.dataAudiencia ?? null,
           payload.proximoPasso,
+          payload.tarefasPendentes ?? null,
           payload.observacoes ?? null,
           id,
         ],

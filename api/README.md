@@ -10,12 +10,14 @@ npm run dev
 ```
 
 Por padrao a API sobe em `http://localhost:3333` e usa o arquivo `.env`.
+Ela sempre consulta o PostgreSQL real. Nao ha fallback para dados em memoria.
 
 ## Variaveis principais
 
 ```env
 PORT=3333
-CORS_ORIGIN=https://dominio-do-front.com.br
+NODE_ENV=production
+CORS_ORIGIN=https://seu-front.vercel.app,https://www.seu-dominio.com.br
 
 DB_HOST=localhost
 DB_PORT=5432
@@ -39,7 +41,7 @@ Na VPS, se o Postgres e a API estiverem na mesma maquina, mantenha `DB_HOST=loca
 Filtros de listagem:
 
 ```text
-GET /api/clientes?search=mariana&status=Ativo&tipo=Planejamento&page=1&limit=10
+GET /api/clientes?search=mariana&status=Conhecimento&tipo=Planejamento&page=1&limit=10
 ```
 
 ## Payload de cadastro/edicao
@@ -50,12 +52,16 @@ GET /api/clientes?search=mariana&status=Ativo&tipo=Planejamento&page=1&limit=10
   "cpf": "123.456.789-10",
   "telefone": "(15) 99999-9999",
   "email": "cliente@email.com",
+  "numeroProcesso": "0001234-56.2026.8.26.0001",
   "tipo": "Consultoria",
-  "status": "Ativo",
+  "status": "Conhecimento",
   "honorarios": 1500,
+  "arrecadacaoHonorarios": 500,
   "dataAbertura": "2026-06-02",
+  "dataAudiencia": null,
   "responsavelNome": "Dr. Thiago Andrade",
   "proximoPasso": "Conferir documentos iniciais",
+  "tarefasPendentes": "Solicitar documentos pendentes.",
   "observacoes": "Observacoes internas do atendimento."
 }
 ```
@@ -68,3 +74,26 @@ npm start
 ```
 
 Na VPS, deixe o PostgreSQL e esta API na mesma maquina. O front-end pode ficar em outro dominio, desde que esse dominio esteja em `CORS_ORIGIN`.
+
+## Banco na VPS
+
+Em uma instalacao nova:
+
+```bash
+psql -U postgres -f ../database/postgres_schema.sql
+psql -U postgres -f ../database/postgres_app_user.sql
+```
+
+Em uma instalacao que ja tinha o schema antigo:
+
+```bash
+psql -U postgres -f ../database/postgres_migration_20260603.sql
+```
+
+Depois valide:
+
+```bash
+curl https://api.seu-dominio.com.br/health
+```
+
+O retorno esperado e `{"status":"ok","database":"connected"}`.

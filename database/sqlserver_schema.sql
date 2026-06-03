@@ -41,19 +41,24 @@ CREATE TABLE dbo.servicos_juridicos (
     id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     cliente_id INT NOT NULL,
     responsavel_id INT NULL,
+    numero_processo NVARCHAR(80) NOT NULL CONSTRAINT DF_servicos_numero_processo DEFAULT (N''),
     tipo NVARCHAR(40) NOT NULL,
-    status NVARCHAR(30) NOT NULL CONSTRAINT DF_servicos_status DEFAULT (N'Ativo'),
+    status NVARCHAR(30) NOT NULL CONSTRAINT DF_servicos_status DEFAULT (N'Conhecimento'),
     honorarios DECIMAL(12,2) NOT NULL CONSTRAINT DF_servicos_honorarios DEFAULT (0),
+    arrecadacao_honorarios DECIMAL(12,2) NOT NULL CONSTRAINT DF_servicos_arrecadacao DEFAULT (0),
     data_abertura DATE NOT NULL CONSTRAINT DF_servicos_data_abertura DEFAULT (CONVERT(date, GETDATE())),
+    data_audiencia DATE NULL,
     proximo_passo NVARCHAR(500) NOT NULL,
+    tarefas_pendentes NVARCHAR(MAX) NULL,
     observacoes NVARCHAR(MAX) NULL,
     criado_em DATETIME2(0) NOT NULL CONSTRAINT DF_servicos_criado_em DEFAULT (SYSDATETIME()),
     atualizado_em DATETIME2(0) NULL,
     CONSTRAINT FK_servicos_clientes FOREIGN KEY (cliente_id) REFERENCES dbo.clientes(id),
     CONSTRAINT FK_servicos_responsaveis FOREIGN KEY (responsavel_id) REFERENCES dbo.responsaveis(id),
     CONSTRAINT CK_servicos_tipo CHECK (tipo IN (N'Consultoria', N'Processo', N'Contrato', N'Audiencia', N'Planejamento')),
-    CONSTRAINT CK_servicos_status CHECK (status IN (N'Ativo', N'Aguardando', N'Concluido')),
-    CONSTRAINT CK_servicos_honorarios CHECK (honorarios >= 0)
+    CONSTRAINT CK_servicos_status CHECK (status IN (N'Conhecimento', N'Prazo a cumprir', N'Execucao')),
+    CONSTRAINT CK_servicos_honorarios CHECK (honorarios >= 0),
+    CONSTRAINT CK_servicos_arrecadacao CHECK (arrecadacao_honorarios >= 0)
 );
 GO
 
@@ -90,18 +95,22 @@ GO
 INSERT INTO dbo.servicos_juridicos (
     cliente_id,
     responsavel_id,
+    numero_processo,
     tipo,
     status,
     honorarios,
+    arrecadacao_honorarios,
     data_abertura,
+    data_audiencia,
     proximo_passo,
+    tarefas_pendentes,
     observacoes
 )
 VALUES
-    (1, 1, N'Planejamento', N'Ativo', 2400.00, '2026-05-09', N'Revisar CNIS e simular melhor data de aposentadoria', N'Falta comprovante de vinculo rural.'),
-    (2, 2, N'Processo', N'Aguardando', 5600.00, '2026-05-14', N'Aguardar decisao administrativa do INSS', N'Retorno ao cliente em 7 dias.'),
-    (3, 1, N'Contrato', N'Ativo', 1800.00, '2026-05-20', N'Enviar minuta contratual para aprovacao', N'Prioridade media.'),
-    (4, 2, N'Audiencia', N'Concluido', 3200.00, '2026-04-28', N'Arquivar comprovantes e enviar recibo final', N'Acordo homologado.');
+    (1, 1, N'', N'Planejamento', N'Conhecimento', 2400.00, 1200.00, '2026-05-09', NULL, N'Revisar CNIS e simular melhor data de aposentadoria', N'Conferir documentos rurais pendentes.', N'Falta comprovante de vinculo rural.'),
+    (2, 2, N'0001234-56.2026.8.26.0001', N'Processo', N'Prazo a cumprir', 5600.00, 1800.00, '2026-05-14', NULL, N'Aguardar decisao administrativa do INSS', NULL, N'Retorno ao cliente em 7 dias.'),
+    (3, 1, N'', N'Contrato', N'Conhecimento', 1800.00, 900.00, '2026-05-20', NULL, N'Enviar minuta contratual para aprovacao', NULL, N'Prioridade media.'),
+    (4, 2, N'0009876-10.2026.8.26.0001', N'Audiencia', N'Execucao', 3200.00, 3200.00, '2026-04-28', '2026-06-12', N'Arquivar comprovantes e enviar recibo final', NULL, N'Acordo homologado.');
 GO
 
 INSERT INTO dbo.movimentacoes (servico_id, titulo, descricao)
@@ -120,15 +129,18 @@ SELECT
     c.cpf,
     c.telefone,
     c.email,
+    s.numero_processo,
     s.tipo,
     s.status,
     s.honorarios,
+    s.arrecadacao_honorarios,
     s.data_abertura,
+    s.data_audiencia,
     r.nome AS responsavel,
     s.proximo_passo,
+    s.tarefas_pendentes,
     s.observacoes
 FROM dbo.servicos_juridicos s
 INNER JOIN dbo.clientes c ON c.id = s.cliente_id
 LEFT JOIN dbo.responsaveis r ON r.id = s.responsavel_id;
 GO
-

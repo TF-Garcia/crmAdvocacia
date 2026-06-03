@@ -3,7 +3,7 @@ import { z } from "zod";
 import { clientesRepository } from "../repositories/clientes.repository";
 
 const serviceTypes = ["Consultoria", "Processo", "Contrato", "Audiencia", "Planejamento"] as const;
-const statusTypes = ["Ativo", "Aguardando", "Concluido"] as const;
+const statusTypes = ["Conhecimento", "Prazo a cumprir", "Execucao"] as const;
 
 const idSchema = z.coerce.number().int().positive();
 
@@ -20,12 +20,16 @@ const clienteSchema = z.object({
   cpf: z.string().trim().min(5).max(20),
   telefone: z.string().trim().min(8).max(30),
   email: z.string().trim().email(),
+  numeroProcesso: z.string().trim().max(80).default(""),
   tipo: z.enum(serviceTypes),
   status: z.enum(statusTypes),
   honorarios: z.coerce.number().min(0),
+  arrecadacaoHonorarios: z.coerce.number().min(0).default(0),
   dataAbertura: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dataAudiencia: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   responsavelNome: z.string().trim().min(2).max(160),
   proximoPasso: z.string().trim().min(2).max(500),
+  tarefasPendentes: z.string().trim().optional().nullable(),
   observacoes: z.string().trim().optional().nullable(),
 });
 

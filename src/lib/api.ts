@@ -1,4 +1,4 @@
-export type ClientStatus = "Ativo" | "Aguardando" | "Concluido";
+export type ClientStatus = "Conhecimento" | "Prazo a cumprir" | "Execucao";
 export type ServiceType = "Consultoria" | "Processo" | "Contrato" | "Audiencia" | "Planejamento";
 
 export type ClientRecord = {
@@ -8,12 +8,16 @@ export type ClientRecord = {
   cpf: string;
   telefone: string;
   email: string;
+  numeroProcesso: string;
   tipo: ServiceType;
   status: ClientStatus;
   honorarios: number;
+  arrecadacaoHonorarios: number;
   dataAbertura: string;
+  dataAudiencia: string | null;
   responsavelNome: string;
   proximoPasso: string;
+  tarefasPendentes: string | null;
   observacoes: string | null;
 };
 
@@ -22,12 +26,16 @@ export type ClientPayload = {
   cpf: string;
   telefone: string;
   email: string;
+  numeroProcesso: string;
   tipo: ServiceType;
   status: ClientStatus;
   honorarios: number;
+  arrecadacaoHonorarios: number;
   dataAbertura: string;
+  dataAudiencia: string | null;
   responsavelNome: string;
   proximoPasso: string;
+  tarefasPendentes: string | null;
   observacoes: string | null;
 };
 
@@ -49,7 +57,13 @@ type ClientFilters = {
   limit?: number;
 };
 
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:3333").replace(/\/$/, "");
+const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+
+if (import.meta.env.PROD && !configuredApiUrl) {
+  throw new Error("Configure VITE_API_URL com a URL publica da API.");
+}
+
+const API_URL = (configuredApiUrl ?? "http://127.0.0.1:3333").replace(/\/$/, "");
 
 const request = async <ResponseBody>(path: string, init?: RequestInit): Promise<ResponseBody> => {
   const response = await fetch(`${API_URL}${path}`, {

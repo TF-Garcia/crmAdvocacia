@@ -15,6 +15,13 @@ export const errorHandler = (error: unknown, _request: Request, response: Respon
 
   console.error(error);
 
+  const code = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
+  if (["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "3D000", "42P01", "42703"].includes(code ?? "")) {
+    return response.status(503).json({
+      error: "Banco de dados indisponivel",
+    });
+  }
+
   return response.status(500).json({
     error: "Erro interno do servidor",
   });
