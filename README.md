@@ -1,38 +1,54 @@
 # CRM Advocacia
 
-Sistema simples de gerenciamento de clientes e servicos para advogados.
+Sistema local de gerenciamento de clientes e servicos para advocacia.
 
-O projeto usa React, Vite, Tailwind e os estilos herdados do modelo de advocacia.
+O projeto agora roda como aplicacao desktop local com Electron. A tela e feita em React/Vite, e o processo local do Electron acessa diretamente o SQL Server, sem API HTTP.
 
-O front consome uma API separada em `api/`, e a API persiste os dados em PostgreSQL usando os scripts em `database/postgres_schema.sql` e `database/postgres_app_user.sql`.
+## Requisitos locais
 
-## Producao
+- Node.js instalado.
+- SQL Server Express rodando na instancia `.\SQLEXPRESS`.
+- `sqlcmd` disponivel no PATH.
+- ODBC Driver 18 for SQL Server instalado.
 
-Arquitetura esperada:
+## Banco local
 
-- Front-end: Vercel
-- API: VPS
-- Banco: PostgreSQL na VPS
+Para criar ou recriar o banco `crm_thiago_adv` com dados iniciais:
 
-No front da Vercel, configure a variavel:
-
-```env
-VITE_API_URL=https://api.seu-dominio.com.br
+```bash
+npm run db:setup
 ```
 
-Na API da VPS, configure `api/.env`:
+O script usa autenticação Windows integrada e executa `database/sqlserver_schema.sql` na instancia `.\SQLEXPRESS`.
 
-```env
-PORT=3333
-NODE_ENV=production
-CORS_ORIGIN=https://seu-front.vercel.app,https://www.seu-dominio.com.br
+## Rodar o sistema
 
-DB_HOST=localhost
-DB_PORT=5432
-DB_DATABASE=crm_thiago_adv
-DB_USER=crm_api_user
-DB_PASSWORD=sua-senha-forte
-DB_SSL=false
+Para gerar o front e abrir o app desktop:
+
+```bash
+npm run local
 ```
 
-A API usa apenas o PostgreSQL real. Se o banco estiver indisponivel, as rotas retornam erro em vez de usar dados simulados.
+Para desenvolvimento da interface:
+
+```bash
+npm run dev
+```
+
+E, em outro terminal:
+
+```bash
+npm run desktop
+```
+
+## Arquitetura local
+
+- `src/`: interface React.
+- `electron/main.cjs`: janela desktop.
+- `electron/preload.cjs`: ponte segura entre tela e processo local.
+- `electron/db.cjs`: acesso direto ao SQL Server.
+- `database/sqlserver_schema.sql`: criacao do banco e dados iniciais.
+
+## Proxima etapa
+
+A base ja esta no caminho certo para o instalador: empacotar o Electron, validar requisitos do SQL Server/ODBC e executar o setup do banco durante a instalacao.

@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import DeferredToaster from "@/components/DeferredToaster";
+import { HashRouter, Route, Routes } from "react-router-dom";
 
 const Index = lazy(() => import("./pages/Index"));
 
@@ -9,15 +8,14 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-    <DeferredToaster />
+  <HashRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="*" element={<Index />} />
       </Routes>
     </Suspense>
-  </BrowserRouter>
+  </HashRouter>
 );
 
 export default App;

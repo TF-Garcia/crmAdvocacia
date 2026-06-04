@@ -1,10 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
+  base: "./",
   server: {
     host: "::",
     port: 8080,
@@ -12,31 +12,23 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            if (id.includes("embla-carousel")) {
-              return "carousel";
-            }
-
-            if (id.includes("framer-motion")) {
-              return "animations";
-            }
-
             if (id.includes("lucide-react")) {
               return "icons";
             }
 
-            if (id.includes("@radix-ui") || id.includes("sonner")) {
+            if (id.includes("@radix-ui")) {
               return "ui-vendor";
             }
 
@@ -52,13 +44,6 @@ export default defineConfig(({ mode }) => ({
             return `page-${pageName}`;
           }
 
-          if (id.includes("/src/components/BlogSection")) {
-            return "section-blog";
-          }
-
-          if (id.includes("/src/components/TestimonialsCarousel")) {
-            return "section-testimonials";
-          }
         },
       },
     },

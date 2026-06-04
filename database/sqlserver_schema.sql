@@ -1,6 +1,24 @@
 IF DB_ID(N'crm_thiago_adv') IS NULL
 BEGIN
-    CREATE DATABASE crm_thiago_adv;
+    DECLARE @dataPath NVARCHAR(4000) = CAST(SERVERPROPERTY(N'InstanceDefaultDataPath') AS NVARCHAR(4000));
+    DECLARE @logPath NVARCHAR(4000) = CAST(SERVERPROPERTY(N'InstanceDefaultLogPath') AS NVARCHAR(4000));
+    DECLARE @sql NVARCHAR(MAX);
+
+    IF RIGHT(@dataPath, 1) <> N'\' SET @dataPath += N'\';
+    IF RIGHT(@logPath, 1) <> N'\' SET @logPath += N'\';
+
+    SET @sql = N'
+        CREATE DATABASE crm_thiago_adv
+        ON PRIMARY (
+            NAME = N''crm_thiago_adv_data'',
+            FILENAME = N''' + @dataPath + N'crm_thiago_adv_app.mdf''
+        )
+        LOG ON (
+            NAME = N''crm_thiago_adv_log'',
+            FILENAME = N''' + @logPath + N'crm_thiago_adv_app.ldf''
+        );';
+
+    EXEC sys.sp_executesql @sql;
 END;
 GO
 
